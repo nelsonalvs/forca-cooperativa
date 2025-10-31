@@ -33,11 +33,14 @@ class HangmanClient:
                 break
     
     def handle_message(self, message):
+        # 🎯 ATUALIZADO: Adiciona suporte a temas
         if message.startswith("START:"):
             parts = message.split(":")
             hidden = parts[2]
             attempts = parts[3]
+            theme = parts[4]  # 🎯 NOVO: Recebe o tema
             print(f"\n🎮 JOGO INICIADO!")
+            print(f"🎯 TEMA: {theme.upper()}")
             print(f"📏 Palavra: {hidden}")
             print(f"💡 Tentativas: {attempts}")
             
@@ -57,13 +60,21 @@ class HangmanClient:
             print(f"\n❌ Letra {parts[1]} incorreta! Tentativas: {parts[2]}")
             
         elif message.startswith("WIN:"):
-            word = message.split(":")[1]
-            print(f"\n🏆 VITÓRIA! Palavra: {word}")
+            parts = message.split(":")
+            word = parts[1]
+            theme = parts[2]  # 🎯 NOVO: Recebe tema na vitória
+            print(f"\n🏆 VITÓRIA!")
+            print(f"🎯 Tema: {theme}")
+            print(f"📝 Palavra: {word}")
             print("🔄 Novo jogo em 5 segundos...")
             
         elif message.startswith("LOSE:"):
-            word = message.split(":")[1]
-            print(f"\n💀 DERROTA! Palavra: {word}")
+            parts = message.split(":")
+            word = parts[1]
+            theme = parts[2]  # 🎯 NOVO: Recebe tema na derrota
+            print(f"\n💀 DERROTA!")
+            print(f"🎯 Tema: {theme}")
+            print(f"📝 A palavra era: {word}")
             print("🔄 Novo jogo em 5 segundos...")
             
         elif message.startswith("JOINED:"):
@@ -89,16 +100,18 @@ class HangmanClient:
                 self.connected = False
     
     def start_interface(self):
-        print("=" * 40)
+        print("=" * 50)
         print("🎮 JOGO DA FORCA COOPERATIVO")
-        print("=" * 40)
+        print("🎯 TEMAS: Animal, País, Computador")
+        print("=" * 50)
         
         self.username = input("Digite seu nome: ")
         self.send_message(f"JOIN:{self.username}")
         
         print(f"\n👋 Olá {self.username}! Aguardando jogadores...")
         print("💡 Digite uma letra para jogar")
-        print("-" * 40)
+        print("🎯 Os temas são escolhidos automaticamente")
+        print("-" * 50)
         
         while self.connected:
             try:

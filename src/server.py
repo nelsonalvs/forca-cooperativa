@@ -10,25 +10,51 @@ class HangmanServer:
         self.clients = []
         self.players = []
         self.game_state = None
-        self.words = ["python", "rede", "computador", "socket", "protocolo", "thread"]
+        
+        # 🎯 NOVO: Palavras organizadas por tema
+        self.themes = {
+            'animal': [
+                'gato', 'cachorro', 'elefante', 'girafa', 'tigre',
+                'leao', 'macaco', 'zebra', 'urso', 'panda'
+            ],
+            'pais': [
+                'brasil', 'argentina', 'canada', 'japao', 'alemanha',
+                'franca', 'italia', 'espanha', 'portugal', 'mexico'
+            ],
+            'computador': [
+                'mouse', 'teclado', 'monitor', 'processador', 'memoria',
+                'windows', 'python', 'java', 'html', 'javascript'
+            ]
+        }
+        self.current_theme = None
+        
+    def select_theme_and_word(self):
+        # 🎯 NOVO: Seleciona tema aleatório e palavra
+        self.current_theme = random.choice(list(self.themes.keys()))
+        word = random.choice(self.themes[self.current_theme])
+        return word
         
     def start_game(self):
         if len(self.players) < 2:
             return
             
-        word = random.choice(self.words)
+        # 🎯 NOVO: Seleciona tema e palavra
+        word = self.select_theme_and_word()
+        
         self.game_state = {
             'word': word,
             'hidden_word': ['_' for _ in word],
             'attempts_left': 6,
             'used_letters': [],
             'current_player': 0,
-            'game_started': True
+            'game_started': True,
+            'theme': self.current_theme  # 🎯 NOVO: Adiciona tema ao estado
         }
         
-        self.broadcast(f"START:{word}:{''.join(self.game_state['hidden_word'])}:{self.game_state['attempts_left']}")
+        # 🎯 NOVO: Envia tema junto com outras informações
+        self.broadcast(f"START:{word}:{''.join(self.game_state['hidden_word'])}:{self.game_state['attempts_left']}:{self.current_theme}")
         self.broadcast(f"TURN:{self.players[0]['username']}")
-        print(f"🎮 Jogo iniciado! Palavra: {word}")
+        print(f"🎮 Jogo iniciado! Tema: {self.current_theme}, Palavra: {word}")
     
     def process_guess(self, letter):
         letter = letter.lower()
@@ -45,7 +71,7 @@ class HangmanServer:
                     self.game_state['hidden_word'][i] = letter
             
             if ''.join(self.game_state['hidden_word']) == word:
-                self.broadcast(f"WIN:{self.game_state['word']}")
+                self.broadcast(f"WIN:{self.game_state['word']}:{self.game_state['theme']}")
                 self.reset_game()
                 return "VITÓRIA"
                 
@@ -55,7 +81,7 @@ class HangmanServer:
             self.game_state['attempts_left'] -= 1
             
             if self.game_state['attempts_left'] <= 0:
-                self.broadcast(f"LOSE:{self.game_state['word']}")
+                self.broadcast(f"LOSE:{self.game_state['word']}:{self.game_state['theme']}")
                 self.reset_game()
                 return "DERROTA"
                 
@@ -69,6 +95,7 @@ class HangmanServer:
     
     def reset_game(self):
         self.game_state = None
+        self.current_theme = None
         print("🔄 Reiniciando jogo em 5 segundos...")
         threading.Timer(5.0, self.start_game).start()
     
@@ -143,6 +170,7 @@ class HangmanServer:
             self.server_socket.bind((self.host, self.port))
             self.server_socket.listen(5)
             print(f"🚀 Servidor rodando em {self.host}:{self.port}")
+            print("🎯 Temas disponíveis: animal, pais, computador")
             print("⏳ Aguardando conexões...")
             
             while True:
