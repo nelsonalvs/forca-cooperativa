@@ -3,7 +3,7 @@ import threading
 import random
 
 def get_local_ip():
-    """Tenta descobrir o IP local da máquina na rede."""
+
     try:
         # Cria um socket temporário para se conectar a um IP externo
         # Isso força o sistema a revelar qual IP local ele usaria
@@ -20,23 +20,26 @@ class HangmanServer:
     def __init__(self, host='0.0.0.0', port=5000):
         self.host = host
         self.port = port
+        # Cria o socket TCP do servidor e inicializa listas para armazenar clientes conectados e jogadores ativos:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients = []
         self.players = []
         self.game_state = None
         
+        # Dicionário pré-definido de temas:
         self.themes = {
             'animal': ['gato', 'cachorro', 'elefante', 'girafa', 'tigre', 'leao', 'macaco', 'zebra', 'urso', 'panda'],
             'pais': ['brasil', 'argentina', 'canada', 'japao', 'alemanha', 'franca', 'italia', 'espanha', 'portugal', 'mexico'],
             'computador': ['mouse', 'teclado', 'monitor', 'processador', 'memoria', 'windows', 'python', 'java', 'html', 'javascript']
         }
         self.current_theme = None
-        
+    # Seleciona aleatoriamente um tema e uma palavra secreta do dicionário pré-definido acima:
     def select_theme_and_word(self):
         self.current_theme = random.choice(list(self.themes.keys()))
         word = random.choice(self.themes[self.current_theme])
         return word
         
+    # Cria o estado inicial do jogo, define a palavra oculta e envia uma mensagem START para todos os jogadores:   
     def start_game(self):
         if len(self.players) < 2:
             return
@@ -52,25 +55,28 @@ class HangmanServer:
             'theme': self.current_theme
         }
         
+        #Comunicação baseada em strings formatadas com separador : - cada tipo de mensagem tem um prefixo identificador:
         self.broadcast(f"START:{word}:{''.join(self.game_state['hidden_word'])}:{self.game_state['attempts_left']}:{self.current_theme}")
         self.broadcast(f"TURN:{self.players[0]['username']}")
-        print(f"🎮 Jogo iniciado! Tema: {self.current_theme}, Palavra: {word}")
+        print(f"Jogo iniciado! Tema: {self.current_theme}, Palavra: {word}")
     
+    #Lógica central do jogo - valida letra, atualiza estado e notifica todos os jogadores sobre acerto/erro
     def process_guess(self, letter):
         letter = letter.lower()
         
+        # Verifica se a letra já foi usada:
         if letter in self.game_state['used_letters']:
             # Envia o erro apenas para o jogador atual
             current_player_socket = self.players[self.game_state['current_player']]['socket']
             try:
                 current_player_socket.send(f"ERROR:Letra {letter} já tentada".encode())
             except Exception as e:
-                print(f"Erro ao enviar msg de erro: {e}")
+                print(f"Erro ao enviar mensagem de erro: {e}")
             return f"Letra {letter} já tentada" # Retorno interno, não afeta o turno
             
         self.game_state['used_letters'].append(letter)
         word = self.game_state['word']
-        
+        # Verifica se a letra está na palavra:
         if letter in word:
             for i, char in enumerate(word):
                 if char == letter:
@@ -79,7 +85,7 @@ class HangmanServer:
             if ''.join(self.game_state['hidden_word']) == word:
                 self.broadcast(f"WIN:{self.game_state['word']}:{self.game_state['theme']}")
                 self.reset_game()
-                return "VITÓRIA"
+                return "Vitória"
                 
             self.broadcast(f"CORRECT:{letter}:{''.join(self.game_state['hidden_word'])}")
             return "Correto!" # Retorno interno
@@ -89,11 +95,12 @@ class HangmanServer:
             if self.game_state['attempts_left'] <= 0:
                 self.broadcast(f"LOSE:{self.game_state['word']}:{self.game_state['theme']}")
                 self.reset_game()
-                return "DERROTA"
+                return "Derrota"
                 
             self.broadcast(f"WRONG:{letter}:{self.game_state['attempts_left']}")
             return "Errado!" # Retorno interno
     
+    #Controla o rodízio de turnos, avisando a todos qual jogador deve jogar em seguida:
     def next_turn(self):
         self.game_state['current_player'] = (self.game_state['current_player'] + 1) % len(self.players)
         next_player = self.players[self.game_state['current_player']]['username']
@@ -102,9 +109,10 @@ class HangmanServer:
     def reset_game(self):
         self.game_state = None
         self.current_theme = None
-        print("🔄 Reiniciando jogo em 5 segundos...")
+        print(" Reiniciando jogo em 5 segundos...")
         threading.Timer(5.0, self.start_game).start()
     
+    # Envia a mesma mensagem para todos os jogadores conectados, mantendo todos sincronizados sobre o estado do jogo:
     def broadcast(self, message):
         # Transmite para todos os clientes na lista
         for client in list(self.clients): # Usamos list() para criar uma cópia
@@ -127,12 +135,11 @@ class HangmanServer:
         if player_to_remove:
             self.players.remove(player_to_remove)
             if player_to_remove['username']:
-                print(f"👋 {player_to_remove['username']} desconectado")
+                print(f" {player_to_remove['username']} desconectado")
                 self.broadcast(f"LEFT:{player_to_remove['username']}")
         
-        # Lógica para parar o jogo se um jogador sair (opcional, mas recomendado)
         if self.game_state and len(self.players) < 2:
-            print("❌ Jogador saiu. Pausando o jogo.")
+            print(" Jogador saiu. Pausando o jogo.")
             self.broadcast("INFO:Um jogador saiu. O jogo está pausado até outro entrar.")
             self.game_state = None # Reseta o jogo
             
@@ -156,7 +163,7 @@ class HangmanServer:
             self.clients.append(player_info) # Adiciona a lista geral de clientes
             
             self.broadcast(f"JOINED:{username}")
-            print(f"👤 {username} conectado. Total de jogadores: {len(self.players)}")
+            print(f" {username} conectado. Total de jogadores: {len(self.players)}")
             
             # Se já houver um jogo, mas só 1 jogador, e outro entrar, inicia.
             if len(self.players) >= 2 and not self.game_state:
@@ -168,7 +175,7 @@ class HangmanServer:
                 if not message:
                     break # Cliente desconectou
                     
-                print(f"📨 {username}: {message}")
+                print(f" {username}: {message}")
                 
                 if message.startswith("GUESS:") and self.game_state:
                     letter = message.split(":", 1)[1]
@@ -187,7 +194,7 @@ class HangmanServer:
                             pass # A desconexão será tratada no loop principal
                 
         except Exception as e:
-            print(f"❌ Erro com {username} ({address}): {e}")
+            print(f" Erro com {username} ({address}): {e}")
         finally:
             # Garante que o cliente seja removido
             if player_info:
@@ -196,19 +203,21 @@ class HangmanServer:
     
     def start_server(self):
         try:
+            # Cria socket TCP, vincula ao endereço/porta e coloca em modo de escuta para aceitar até 5 conexões pendentes:
             self.server_socket.bind((self.host, self.port))
             self.server_socket.listen(5)
             
             server_ip = get_local_ip() # Chama a nova função
             
             print("="*50)
-            print(f"🚀 Servidor da Forca rodando!")
-            print(f"📡 Escutando em todas as interfaces ({self.host}:{self.port})")
+            print(f"Servidor da Forca rodando!")
+            print(f"Escutando em todas as interfaces ({self.host}:{self.port})")
             print("="*50)
-            print(f"💡 Para outros computadores na mesma rede,")
-            print(f"   conecte-se ao IP: {server_ip}:{self.port}")
+            print(f"Para outros computadores na mesma rede,")
+            print(f" conecte-se ao IP: {server_ip}:{self.port}")
             print("="*50)
             
+            # Para cada cliente que conecta, cria uma thread independente que gerencia aquele jogador, permitindo múltiplos jogadores simultâneos.
             while True:
                 client_socket, address = self.server_socket.accept()
                 client_thread = threading.Thread(target=self.handle_client, args=(client_socket, address))
@@ -216,9 +225,9 @@ class HangmanServer:
                 client_thread.start()
                 
         except KeyboardInterrupt:
-            print("\n🛑 Servidor encerrado pelo usuário.")
+            print("\nServidor encerrado pelo usuário.")
         except Exception as e:
-            print(f"❌ Erro fatal no servidor: {e}")
+            print(f"Erro fatal no servidor: {e}")
         finally:
             self.server_socket.close()
 
