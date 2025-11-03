@@ -72,6 +72,7 @@ A comunicação é feita via mensagens textuais padronizadas, por exemplo:
 ## Dificuldades encontradas
 Durante o desenvolvimento, enfrentamos desafios como:
 - Sincronização correta dos turnos entre jogadores;
+- O Firewall do Windows
 - Tratamento de desconexões inesperadas de clientes;
 - Reinício automático do jogo ao término de uma rodada;
 - Testes em diferentes sistemas operacionais e redes locais.
