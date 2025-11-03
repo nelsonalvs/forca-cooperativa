@@ -50,7 +50,7 @@ Em outros terminais (ou outras máquinas da mesma rede local):
 python client.py
 ```
 
-Ao iniciar, o cliente se conecta ao servidor e aguarda o início do jogo.  
+Ao iniciar, o cliente se conecta ao servidor através do IP e aguarda o início do jogo.  
 Cada jogador envia suas tentativas de letras, e o servidor coordena os turnos e atualiza o estado do jogo para todos.
 
 ---
